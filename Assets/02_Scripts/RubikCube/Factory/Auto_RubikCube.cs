@@ -4,6 +4,31 @@ using UnityEngine;
 
 public class Auto_RubikCube : MonoBehaviour
 {
+    public enum eOperatorType
+    {
+        Left,
+        Right,
+        Up,
+        Down,
+        Front,
+        Back,
+        Middle,
+        Equator,
+        Standing,
+    }
+
+    [System.Serializable]
+    public struct OperatorData
+    {
+        public eOperatorType operatorType;    //回転タイプ
+        public Vector3 axis;    //回転軸
+        public float direction; //回転方向
+        public float speed;     //スピード
+    }
+
+    [SerializeField]
+    OperatorData mOperatorData; //操作データ
+
     [SerializeField]
     private GameObject m_prefab;                                            //生成するプレハブ
 
@@ -16,7 +41,11 @@ public class Auto_RubikCube : MonoBehaviour
     [SerializeField]
     private Vector3 m_maxCubes = new Vector3(3.0f, 3.0f, 3.0f);             //生成するキューブの最大量
 
-    private List<List<GameObject>> m_cubes;                                 //生成したキューブ一覧(基本的に27or26(中心いらない))
+    //private List<List<GameObject>> m_cubes;                                 //生成したキューブ一覧(基本的に27or26(中心いらない))
+
+    private List<GameObject> mCubes;    //キューブの配列を保存する。
+
+    private GameObject mRotationParent = new GameObject();
 
     private void Start()
     {
@@ -38,6 +67,9 @@ public class Auto_RubikCube : MonoBehaviour
                 {
                     //キューブの生成
                     var cube = CreateCube(new Vector3(x, y, z) * m_offsetRange);
+                    mCubes.Add(cube);
+
+                    
                 }
             }
         }
