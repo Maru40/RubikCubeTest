@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Configuration;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -16,7 +17,7 @@ public class Auto_RubikCube : MonoBehaviour
     {
         kX,
         kY,
-        kZ
+        kZ,
     }
 
     private List<GroupData> mGroupDatas = new List<GroupData>();
@@ -26,6 +27,11 @@ public class Auto_RubikCube : MonoBehaviour
 
     [SerializeField]
     private GameObject m_prefab;                                            //生成するプレハブ
+
+    [SerializeField]
+    private GameObject mRotationParentPrefab;
+
+    private RotationParent mRotationParent;
 
     [SerializeField]
     private float m_offsetSize = 1.0f;                                      //生成する大きさのオフセット
@@ -41,10 +47,112 @@ public class Auto_RubikCube : MonoBehaviour
 
     private List<GameObject> mCubes = new List<GameObject>();    //キューブの配列を保存する。
 
+    private int mSelectIndex = 0;
+
+    private AxisType mAxisType = AxisType.kX;
+
     private void Start()
     {
         Factory_RubikCubes();   //キューブの生成
         CreateRotationGroup();
+
+        mRotationParent = Instantiate(mRotationParentPrefab).GetComponent<RotationParent>();
+    }
+
+    private void Update()
+    {
+        InputUpdate();
+    }
+
+    void StartRotation()
+    {
+        if(mRotationParent.IsRotation()) {
+            return;
+        }
+
+        SettingGroup();
+        mRotationParent.StartRotation(GetAxis());
+    }
+
+    private void SettingGroup()
+    {
+        foreach(var cube in mCubes)
+        {
+            cube.transform.SetParent(null);
+        }
+
+        var datas = mGraupDatasMap[mAxisType];
+
+        foreach (var index in datas[mSelectIndex].indices)
+        {
+            mCubes[index].transform.SetParent(mRotationParent.transform);
+        }
+    }
+
+    private void InputUpdate()
+    {
+        SelectIndex();
+        ChangeAxisType();
+        InputStartRotation();
+    }
+
+    private void SelectIndex()
+    {
+        if(Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            mSelectIndex++;
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            mSelectIndex--;
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            mSelectIndex++;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            mSelectIndex--;
+        }
+
+        //クランプ
+        if (mSelectIndex < 0)
+        {
+            mSelectIndex = mSize - 1;
+        }
+
+        if(mSize <= mSelectIndex)
+        {
+            mSelectIndex = 0;
+        }
+    }
+
+    void ChangeAxisType()
+    {
+        if(Input.GetKeyDown(KeyCode.C))
+        {
+            int axisIndex = (int)(mAxisType);
+            axisIndex++;
+
+            //クランプ
+            if((int)(AxisType.kZ) < axisIndex)
+            {
+                axisIndex = 0;
+            }
+
+            mAxisType = (AxisType)axisIndex;
+        }
+    }
+
+    void InputStartRotation()
+    {
+        if(Input.GetKeyDown(KeyCode.F))
+        {
+            StartRotation();
+        }
     }
 
     //回転グループの生成
@@ -83,6 +191,23 @@ public class Auto_RubikCube : MonoBehaviour
 
         mGroupDatas.Add(data);
         mGraupDatasMap[type].Add(data);
+    }
+
+    private Vector3 GetAxis()
+    {
+        switch (mAxisType)
+        {
+            case AxisType.kX:
+                return Vector3.right;
+
+            case AxisType.kY:
+                return Vector3.up;
+
+            case AxisType.kZ:
+                return Vector3.forward;
+        }
+
+        return Vector3.up;
     }
 
     private int GetStartBaseIndex(AxisType type)
@@ -144,7 +269,8 @@ public class Auto_RubikCube : MonoBehaviour
                 for (int z = 0; z < m_maxCubes.z; ++z)
                 {
                     //キューブの生成
-                    var cube = CreateCube(new Vector3(x, y, z) * m_offsetRange);
+                    var position = firstPosition + (new Vector3(x, y, z) * m_offsetRange);
+                    var cube = CreateCube(position);
                     mCubes.Add(cube);
                 }
             }
@@ -173,7 +299,7 @@ public class Auto_RubikCube : MonoBehaviour
     {
         var result = Vector3.zero;
 
-        var halfMaxCubes = m_maxCubes * 0.5f;
+        var halfMaxCubes = m_maxCubes / mSize;
 
         result.x = -halfMaxCubes.x; //xの左を取得
 
