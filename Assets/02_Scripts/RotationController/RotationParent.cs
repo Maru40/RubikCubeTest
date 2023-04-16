@@ -24,19 +24,15 @@ public class RotationParent : MonoBehaviour
         if (IsRotation()) {
             RotationUpdate();
         }
-
-        if(Input.GetKeyDown(KeyCode.F)) {
-            //StartRotation(Vector3.up);
-        }
     }
 
     public void StartRotation(Vector3 axis)
     {
-        if (IsRotation())
-        {
+        if (IsRotation()) {
             return;
         }
 
+        mRotationEuler = axis;
         mGameTimer.ResetTimer(mTime);
     }
 
@@ -45,7 +41,7 @@ public class RotationParent : MonoBehaviour
         transform.Rotate(mRotationEuler * mTime * mAngle * Time.deltaTime);
     }
 
-    private bool IsRotation()
+    public bool IsRotation()
     {
         return !mGameTimer.IsTimeUp;
     }
