@@ -1,34 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Auto_RubikCube : MonoBehaviour
 {
-    public enum eOperatorType
-    {
-        Left,
-        Right,
-        Up,
-        Down,
-        Front,
-        Back,
-        Middle,
-        Equator,
-        Standing,
-    }
 
     [System.Serializable]
-    public struct OperatorData
+    public struct GroupData
     {
-        public eOperatorType operatorType;    //回転タイプ
-        public Vector3 axis;    //回転軸
-        public float direction; //回転方向
-        public float speed;     //スピード
-        public List<int> memberIndices;
+        public List<int> indices;
     }
 
-    [SerializeField]
-    Dictionary<eOperatorType, OperatorData> mOperatorDataMap = new Dictionary<eOperatorType, OperatorData>(); //操作データ
+    public enum AxisType
+    {
+        kX,
+        kY,
+        kZ
+    }
+
+    private List<GroupData> mGroupDatas = new List<GroupData>();
+
+    private Dictionary<AxisType, List<GroupData>> mGraupDatasMap = 
+        new Dictionary<AxisType, List<GroupData>>();
 
     [SerializeField]
     private GameObject m_prefab;                                            //生成するプレハブ
@@ -42,15 +36,98 @@ public class Auto_RubikCube : MonoBehaviour
     [SerializeField]
     private Vector3 m_maxCubes = new Vector3(3.0f, 3.0f, 3.0f);             //生成するキューブの最大量
 
-    //private List<List<GameObject>> m_cubes;                               //生成したキューブ一覧(基本的に27or26(中心いらない))
+    [SerializeField]
+    private int mSize = 3;
 
     private List<GameObject> mCubes = new List<GameObject>();    //キューブの配列を保存する。
-
-    //private GameObject mRotationParent = new GameObject();
 
     private void Start()
     {
         Factory_RubikCubes();   //キューブの生成
+        CreateRotationGroup();
+    }
+
+    //回転グループの生成
+    private void CreateRotationGroup()
+    {
+        mGraupDatasMap[AxisType.kX] = new List<GroupData>();
+        mGraupDatasMap[AxisType.kY] = new List<GroupData>();
+        mGraupDatasMap[AxisType.kZ] = new List<GroupData>();
+
+        for (int i = 0; i < mSize; ++i)
+        {
+            CreateAxisGroup(i, AxisType.kX);
+            CreateAxisGroup(i, AxisType.kY);
+            CreateAxisGroup(i, AxisType.kZ);
+        }
+    }
+
+    private void CreateAxisGroup(int mulStartIndex, AxisType type)
+    {
+        var data = new GroupData();
+        data.indices = new List<int>();
+
+        int startIndex = GetStartBaseIndex(type) * mulStartIndex;
+
+        for (int i = 0; i < mSize; ++i)
+        {
+            int stepIndex = GetStepBaseIndex(type) * i;
+            for (int j = 0; j < mSize; ++j)
+            {
+                int oneLoopIndex = GetOneLoopBaseIndex(type) * j;
+                int index = startIndex + stepIndex + oneLoopIndex;
+
+                data.indices.Add(index);
+            }
+        }
+
+        mGroupDatas.Add(data);
+        mGraupDatasMap[type].Add(data);
+    }
+
+    private int GetStartBaseIndex(AxisType type)
+    {
+        switch (type)
+        {
+            case AxisType.kX:
+                return mSize * mSize;
+            case AxisType.kY:
+                return mSize;
+            case AxisType.kZ:
+                return 1;
+        }
+
+        return 0;
+    }
+
+    private int GetStepBaseIndex(AxisType type)
+    {
+        switch (type)
+        {
+            case AxisType.kX:
+                return mSize;
+            case AxisType.kY:
+                return 1;
+            case AxisType.kZ:
+                return mSize;
+        }
+
+        return 0;
+    }
+
+    private int GetOneLoopBaseIndex(AxisType type)
+    {
+        switch (type)
+        {
+            case AxisType.kX:
+                return 1;
+            case AxisType.kY:
+                return mSize * mSize;
+            case AxisType.kZ:
+                return mSize * mSize;
+        }
+
+        return 0;
     }
 
     /// <summary>
@@ -106,15 +183,4 @@ public class Auto_RubikCube : MonoBehaviour
 
         return result;
     }
-
-    private Vector3 CalculateCubePosition(Vector3Int indexVec)
-    {
-        var result = new Vector3();
-
-        var firstPosition = CalculateCubesFirstPosition();
-        //firstPosition.x + (indexVec.x);
-
-        return result;
-    }
-
 }

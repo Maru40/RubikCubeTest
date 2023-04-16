@@ -17,6 +17,8 @@ public class Factory_RubikCube : MonoBehaviour
 
     private List<GameObject> m_rects = new List<GameObject>();   //生成したRectを格納する配列
 
+    private List<List<List<GameObject>>> mCubes;    //生成したキューブのカウント
+
     private void Start()
     {
         Initialize();
