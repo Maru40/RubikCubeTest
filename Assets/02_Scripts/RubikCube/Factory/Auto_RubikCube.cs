@@ -46,6 +46,7 @@ public class Auto_RubikCube : MonoBehaviour
     private int mSize = 3;
 
     private List<GameObject> mCubes = new List<GameObject>();    //キューブの配列を保存する。
+    private List<List<List<GameObject>>> mCubes3 = new List<List<List<GameObject>>>();
 
     private int mSelectIndex = 0;
 
