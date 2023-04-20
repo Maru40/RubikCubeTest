@@ -81,16 +81,24 @@ public class Auto_RubikCube : MonoBehaviour
     private Dictionary<eOperationType, State> mMoveMap = new Dictionary<eOperationType, State>();
 
     //ステート管理系
-    State mState;
+    State mState = new State();
 
-    ////各コーナーパーツの場所を表す8次元ベクトル
-    //int[] cp = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 }; 
-    ////各コーナーの向きがどの向きを向いているかどうかの情報を表す8次元ベクトル
-    //int[] co = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
-    ////各エッジパーツの場所を表す12次元ベクトル
-    //int[] ep = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-    ////各エッジパーツの向きを表す12次元ベクトル
-    //int[] eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    //操作データ
+    public struct OperationData
+    {
+        public int selectType;
+        public AxisType axisType;
+        public int direction;
+
+        public OperationData(int selectType, AxisType axisType, int direction)
+        {
+            this.selectType = selectType;
+            this.axisType = axisType;
+            this.direction = direction; 
+        }
+    }
+
+    Dictionary<eOperationType, OperationData> mOperationDataMap = new Dictionary<eOperationType, OperationData>();
 
     private void Start()
     {
@@ -99,6 +107,7 @@ public class Auto_RubikCube : MonoBehaviour
         CreateComparisonSelectValue();
 
         CreateOperationMoves();
+        CreateOperationDataMap();
         ColorAdjust();    //カラー調整
 
         mRotationParent = Instantiate(mRotationParentPrefab).GetComponent<RotationParent>();
@@ -107,6 +116,16 @@ public class Auto_RubikCube : MonoBehaviour
     private void Update()
     {
         InputUpdate();
+    }
+
+    void CreateOperationDataMap()
+    {
+        mOperationDataMap[eOperationType.U] = new OperationData(2, AxisType.kY, 1); 
+        mOperationDataMap[eOperationType.D] = new OperationData(0, AxisType.kY, 1); 
+        mOperationDataMap[eOperationType.L] = new OperationData(0, AxisType.kX, 1); 
+        mOperationDataMap[eOperationType.R] = new OperationData(2, AxisType.kX, 1); 
+        mOperationDataMap[eOperationType.F] = new OperationData(0, AxisType.kZ, 1); 
+        mOperationDataMap[eOperationType.B] = new OperationData(2, AxisType.kZ, 1); 
     }
 
     private void CreateOperationMoves()
@@ -154,12 +173,15 @@ public class Auto_RubikCube : MonoBehaviour
     {
         State newState = new State();
 
-        newState.cp = AddCpState(self, move);
+        newState.cp = AddCornerPointState(self, move);
+        newState.co = AddCornerDirectionState(self, move);
+        newState.ep = AddEdgePointState(self, move);
+        newState.eo = AddEdgeDirectionState(self, move);
 
         return newState;
     }
 
-    int[] AddCpState(State self, State move)
+    private int[] AddCornerPointState(State self, State move)
     {
         var result = new int[8];
 
@@ -167,6 +189,45 @@ public class Auto_RubikCube : MonoBehaviour
         {
             int index = move.cp[i];
             result[i] = self.cp[index];
+        }
+
+        return result;
+    }
+
+    private int[] AddCornerDirectionState(State self, State move)
+    {
+        var result = new int[8];
+
+        for (int i = 0; i < result.Length; ++i)
+        {
+            int moveIndex = move.co[i];
+            result[i] = (self.co[moveIndex] + move.co[i]) % 3;
+        }
+
+        return result;
+    }
+
+    private int[] AddEdgePointState(State self, State move)
+    {
+        var result = new int[12];
+
+        for(int i = 0; i < result.Length; ++i)
+        {
+            int moveIndex = move.ep[i];
+            result[i] = self.ep[moveIndex];
+        }
+
+        return result;
+    }
+
+    private int[] AddEdgeDirectionState(State self, State move)
+    {
+        var result = new int[12];
+
+        for(int i = 0; i < result.Length; ++i)
+        {
+            int moveIndex = move.eo[i];
+            result[i] = (self.eo[moveIndex] + move.eo[i]) % 2;
         }
 
         return result;
@@ -188,11 +249,24 @@ public class Auto_RubikCube : MonoBehaviour
             return;
         }
 
-        SettingGroup();
-        mRotationParent.StartRotation(GetAxis());
+        SettingGroup(mAxisType, mSelectIndex);
+        mRotationParent.StartRotation(GetAxis(mAxisType), 1);
     }
 
-    private void SettingGroup()
+    void StartRotation(OperationData data)
+    {
+        if (mRotationParent.IsRotation())
+        {
+            return;
+        }
+
+        SettingGroup(data.axisType, data.selectType);
+        mRotationParent.StartRotation(GetAxis(data.axisType), data.direction);
+        mState = AddState(mState, mMoveMap[eOperationType.R]);
+        int i = 0;
+    }
+
+    private void SettingGroup(AxisType axisType, int selectIndex)
     {
         foreach(var cube in mCubes)
         {
@@ -201,7 +275,7 @@ public class Auto_RubikCube : MonoBehaviour
 
         mRotationParent.transform.rotation = Quaternion.identity;
 
-        foreach(var cube in CreateRotationGroup((int)mAxisType, mSelectIndex))
+        foreach(var cube in CreateRotationGroup((int)axisType, selectIndex))
         {
             cube.transform.SetParent(mRotationParent.transform);
         }
@@ -307,6 +381,11 @@ public class Auto_RubikCube : MonoBehaviour
         {
             StartRotation();
         }
+
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            StartRotation(mOperationDataMap[eOperationType.R]);
+        }
     }
 
     //回転グループの生成
@@ -347,9 +426,9 @@ public class Auto_RubikCube : MonoBehaviour
         mGraupDatasMap[type].Add(data);
     }
 
-    private Vector3 GetAxis()
+    private Vector3 GetAxis(AxisType axisType)
     {
-        switch (mAxisType)
+        switch (axisType)
         {
             case AxisType.kX:
                 return Vector3.right;

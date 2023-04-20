@@ -15,6 +15,8 @@ public class RotationParent : MonoBehaviour
     [SerializeField]
     private Vector3 mRotationEuler = Vector3.up;
 
+    private int mDirection = 1;
+
     private GameTimer mGameTimer = new GameTimer();
 
     private void Update()
@@ -26,19 +28,20 @@ public class RotationParent : MonoBehaviour
         }
     }
 
-    public void StartRotation(Vector3 axis)
+    public void StartRotation(Vector3 axis, int direction)
     {
         if (IsRotation()) {
             return;
         }
 
         mRotationEuler = axis;
+        mDirection = direction;
         mGameTimer.ResetTimer(mTime);
     }
 
     private void RotationUpdate()
     {
-        transform.Rotate(mRotationEuler * mTime * mAngle * Time.deltaTime);
+        transform.Rotate(mRotationEuler * mTime * mAngle * Time.deltaTime * mDirection);
     }
 
     public bool IsRotation()
