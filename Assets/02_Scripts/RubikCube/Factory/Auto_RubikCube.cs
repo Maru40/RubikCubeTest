@@ -66,22 +66,42 @@ public class Auto_RubikCube : MonoBehaviour
         B
     }
 
-    public class State
+    public struct State
     {
         //各コーナーパーツの場所を表す8次元ベクトル
-        public int[] cp = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
+        public int[] cp;// = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
         //各コーナーの向きがどの向きを向いているかどうかの情報を表す8次元ベクトル
-        public int[] co = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+        public int[] co;// = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
         //各エッジパーツの場所を表す12次元ベクトル
-        public int[] ep = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        public int[] ep;// = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
         //各エッジパーツの向きを表す12次元ベクトル
-        public int[] eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        public int[] eo;// = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+        public State(int i)
+        {
+            cp = new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+            co = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+            ep = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+
+            eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        }
+
+        public State(int[] cp, int[] co, int[] ep, int[] eo)
+        {
+            this.cp = cp;
+            this.co = co;
+            this.ep = ep;
+            this.eo = eo;
+        }
     }
 
-    private Dictionary<eOperationType, State> mMoveMap = new Dictionary<eOperationType, State>();
+    //private Dictionary<eOperationType, State> mMoveMap = new Dictionary<eOperationType, State>();
+    private List<State> mStateSummary = new List<State>();
 
     //ステート管理系
-    State mState = new State();
+    State mState = new State(0);
 
     //操作データ
     public struct OperationData
@@ -98,8 +118,12 @@ public class Auto_RubikCube : MonoBehaviour
         }
     }
 
-    Dictionary<eOperationType, OperationData> mOperationDataMap = new Dictionary<eOperationType, OperationData>();
+    // Dictionary<eOperationType, OperationData> mOperationDataMap = new Dictionary<eOperationType, OperationData>();
+    List<OperationData> mOperationDataSummary = new List<OperationData>();
 
+    /// <summary>
+    /// 
+    /// </summary>
     private void Start()
     {
         Factory_RubikCubes();   //キューブの生成
@@ -120,58 +144,79 @@ public class Auto_RubikCube : MonoBehaviour
 
     void CreateOperationDataMap()
     {
-        mOperationDataMap[eOperationType.U] = new OperationData(2, AxisType.kY, 1); 
-        mOperationDataMap[eOperationType.D] = new OperationData(0, AxisType.kY, 1); 
-        mOperationDataMap[eOperationType.L] = new OperationData(0, AxisType.kX, 1); 
-        mOperationDataMap[eOperationType.R] = new OperationData(2, AxisType.kX, 1); 
-        mOperationDataMap[eOperationType.F] = new OperationData(0, AxisType.kZ, 1); 
-        mOperationDataMap[eOperationType.B] = new OperationData(2, AxisType.kZ, 1); 
+        OperationData[] datas = 
+        {
+            new OperationData(2, AxisType.kY, 1),
+            new OperationData(0, AxisType.kY, 1),
+            new OperationData(0, AxisType.kX, 1),
+            new OperationData(2, AxisType.kX, 1),
+            new OperationData(0, AxisType.kZ, 1),
+            new OperationData(2, AxisType.kZ, 1)
+        };
+
+        foreach(var data in datas)
+        {
+            mOperationDataSummary.Add(data);
+        }
     }
 
     private void CreateOperationMoves()
     {
-        var state = new State();
+        State[] states =
+        {
+            //Up
+            new State(
+                new int[8] { 3, 0, 1, 2, 4, 5, 6, 7 },
+                new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[12] { 0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+            ),
+            //Down
+            new State(
+                new int[8] { 0, 1, 2, 3, 5, 6, 7, 4 },
+                new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+            ),
+            //Left
+            new State(
+                new int[8] { 4, 1, 2, 0, 7, 5, 6, 3 },
+                new int[8] { 2, 0, 0, 1, 1, 0, 0, 2 },
+                new int[12] { 11, 1, 2, 7, 4, 5, 6, 0, 8, 9, 10, 3 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+            ),
+            //Right
+            new State(
+                new int[8] { 0, 2, 6, 3, 4, 1, 5, 7 },
+                new int[8] { 0, 1, 2, 0, 0, 2, 1, 0 },
+                new int[12] { 0, 5, 9, 3, 4, 2, 6, 7, 8, 1, 10, 11 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+            ),
+            //Front
+            new State(
+                new int[8] { 0, 1, 3, 7, 4, 5, 2, 6 },
+                new int[8] { 0, 0, 1, 2, 0, 0, 2, 1 },
+                new int[12] { 0, 1, 6, 10, 4, 5, 3, 7, 8, 9, 2, 11 },
+                new int[12] { 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0 }
+            ),
+            //Back
+            new State(
+                new int[8] { 1, 5, 2, 3, 0, 4, 6, 7 },
+                new int[8] { 1, 2, 0, 0, 2, 1, 0, 0 },
+                new int[12] { 4, 8, 2, 3, 1, 5, 6, 7, 0, 9, 10, 11 },
+                new int[12] { 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 }
+            ),
+        };
 
-        state.cp = new int[8] { 3, 0, 1, 2, 4, 5, 6, 7 };
-        state.co = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
-        state.ep = new int[12] { 0, 1, 2, 3, 7, 4, 5, 6, 8, 9, 10, 11 };
-        state.eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        mMoveMap[eOperationType.U] = state;
-
-        state.cp = new int[8] { 0, 1, 2, 3, 5, 6, 7, 4 };
-        state.co = new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
-        state.ep = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 8 };
-        state.eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        mMoveMap[eOperationType.D] = state;
-
-        state.cp = new int[8] { 4, 1, 2, 0, 7, 5, 6, 3 };
-        state.co = new int[8] { 2, 0, 0, 1, 1, 0, 0, 2 };
-        state.ep = new int[12] { 11, 1, 2, 7, 4, 5, 6, 0, 8, 9, 10, 3 };
-        state.eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        mMoveMap[eOperationType.L] = state;
-
-        state.cp = new int[8] { 0, 2, 6, 3, 4, 1, 5, 7 };
-        state.co = new int[8] { 0, 1, 2, 0, 0, 2, 1, 0 };
-        state.ep = new int[12] { 0, 5, 9, 3, 4, 2, 6, 7, 8, 1, 10, 11 };
-        state.eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        mMoveMap[eOperationType.R] = state;
-
-        state.cp = new int[8] { 0, 1, 3, 7, 4, 5, 2, 6 };
-        state.co = new int[8] { 0, 0, 1, 2, 0, 0, 2, 1 };
-        state.ep = new int[12] { 0, 1, 6, 10, 4, 5, 3, 7, 8, 9, 2, 11 };
-        state.eo = new int[12] { 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0 };
-        mMoveMap[eOperationType.F] = state;
-
-        state.cp = new int[8] { 1, 5, 2, 3, 0, 4, 6, 7 };
-        state.co = new int[8] { 1, 2, 0, 0, 2, 1, 0, 0 };
-        state.ep = new int[12] { 4, 8, 2, 3, 1, 5, 6, 7, 0, 9, 10, 11 };
-        state.eo = new int[12] { 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 };
-        mMoveMap[eOperationType.B] = state;
+        foreach(var state in states)
+        {
+            mStateSummary.Add(state);
+        }
     }
 
     State AddState(State self, State move)
     {
-        State newState = new State();
+        State newState = new State(0);
 
         newState.cp = AddCornerPointState(self, move);
         newState.co = AddCornerDirectionState(self, move);
@@ -200,7 +245,7 @@ public class Auto_RubikCube : MonoBehaviour
 
         for (int i = 0; i < result.Length; ++i)
         {
-            int moveIndex = move.co[i];
+            int moveIndex = move.cp[i];
             result[i] = (self.co[moveIndex] + move.co[i]) % 3;
         }
 
@@ -226,7 +271,7 @@ public class Auto_RubikCube : MonoBehaviour
 
         for(int i = 0; i < result.Length; ++i)
         {
-            int moveIndex = move.eo[i];
+            int moveIndex = move.ep[i];
             result[i] = (self.eo[moveIndex] + move.eo[i]) % 2;
         }
 
@@ -262,8 +307,7 @@ public class Auto_RubikCube : MonoBehaviour
 
         SettingGroup(data.axisType, data.selectType);
         mRotationParent.StartRotation(GetAxis(data.axisType), data.direction);
-        mState = AddState(mState, mMoveMap[eOperationType.R]);
-        int i = 0;
+        mState = AddState(mState, mStateSummary[(int)eOperationType.R]);
     }
 
     private void SettingGroup(AxisType axisType, int selectIndex)
@@ -384,7 +428,7 @@ public class Auto_RubikCube : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.L))
         {
-            StartRotation(mOperationDataMap[eOperationType.R]);
+            StartRotation(mOperationDataSummary[(int)eOperationType.R]);
         }
     }
 
