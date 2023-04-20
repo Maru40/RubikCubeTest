@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Unity.Services.Core.Environments;
 using Unity.VisualScripting;
@@ -76,6 +77,10 @@ public class Auto_RubikCube : MonoBehaviour
         public int[] ep;// = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
         //各エッジパーツの向きを表す12次元ベクトル
         public int[] eo;// = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        //各センターパーツの場所を表す
+        public int[] centerPoint;
+        //各センタパーツの向きを表す
+        public int[] centerRotation;
 
         public State(int i)
         {
@@ -86,6 +91,10 @@ public class Auto_RubikCube : MonoBehaviour
             ep = new int[12] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
 
             eo = new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+            centerPoint = new int[6] { 0, 1, 2, 3, 4, 5 };
+
+            centerRotation = new int[6] { 0, 0, 0, 0, 0, 0 };
         }
 
         public State(int[] cp, int[] co, int[] ep, int[] eo)
@@ -94,6 +103,18 @@ public class Auto_RubikCube : MonoBehaviour
             this.co = co;
             this.ep = ep;
             this.eo = eo;
+            centerPoint = new int[6] { 0, 1, 2, 3, 4, 5 };
+            centerRotation = new int[6] { 0, 0, 0, 0, 0, 0 };
+        }
+
+        public State(int[] cp, int[] co, int[] ep, int[] eo, int[] centerPoint, int[] centerRotation)
+        {
+            this.cp = cp;
+            this.co = co;
+            this.ep = ep;
+            this.eo = eo;
+            this.centerPoint = centerPoint;
+            this.centerRotation = centerRotation;
         }
     }
 
@@ -115,6 +136,13 @@ public class Auto_RubikCube : MonoBehaviour
             this.selectType = selectType;
             this.axisType = axisType;
             this.direction = direction; 
+        }
+
+        public bool IsEqual(OperationData data)
+        {
+            return this.selectType == data.selectType &&
+                this.axisType == data.axisType &&
+                this.direction == data.direction;
         }
     }
 
@@ -151,12 +179,18 @@ public class Auto_RubikCube : MonoBehaviour
             new OperationData(0, AxisType.kX, 1),
             new OperationData(2, AxisType.kX, 1),
             new OperationData(0, AxisType.kZ, 1),
-            new OperationData(2, AxisType.kZ, 1)
+            new OperationData(2, AxisType.kZ, 1),
+            new OperationData(1, AxisType.kX, 1), //XMiddle
+            new OperationData(1, AxisType.kY, 1),//YMiddle
+            new OperationData(1, AxisType.kZ, 1),//ZMiddle
         };
 
         foreach(var data in datas)
         {
             mOperationDataSummary.Add(data);
+            var newData = data;
+            newData.direction = -1;
+            mOperationDataSummary.Add(newData);
         }
     }
 
@@ -206,11 +240,49 @@ public class Auto_RubikCube : MonoBehaviour
                 new int[12] { 4, 8, 2, 3, 1, 5, 6, 7, 0, 9, 10, 11 },
                 new int[12] { 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 }
             ),
+
+            //XMiddle
+            new State(
+                new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 },
+                new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[12] { 0, 1, 2, 3, 6, 5, 10, 7, 4, 9, 8, 11 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[6] { 4, 1, 5, 3, 2, 0 },
+                new int[6] { 0, 0, 0, 0, 0, 0 }
+            ),
+
+            //YMiddle
+            new State(
+                new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 },
+                new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[12] { 3, 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 },
+                new int[12] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[6] { 3, 0, 1, 2, 4, 5 },
+                new int[6] { 0, 0, 0, 0, 0, 0 }
+            ),
+
+            //ZMiddle
+            new State(
+                new int[8] { 0, 1, 2, 3, 4, 5, 6, 7 },
+                new int[8] { 0, 0, 0, 0, 0, 0, 0, 0 },
+                new int[12] { 0, 1, 2, 3, 4, 9, 6, 5, 8, 11, 10, 7 },
+                new int[12] { 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1 },
+                new int[6] { 0, 4, 2, 5, 3, 1 },
+                new int[6] { 0, 1, 0, 1, 1, 1 }
+            ),
         };
 
+        int index = 0;
         foreach(var state in states)
         {
             mStateSummary.Add(state);
+            var doubleState = AddState(state, state);
+            mStateSummary.Add(AddState(doubleState, state));
+            index++;
+            if(index == 12)
+            {
+                int s = 0;
+            }
         }
     }
 
@@ -222,8 +294,36 @@ public class Auto_RubikCube : MonoBehaviour
         newState.co = AddCornerDirectionState(self, move);
         newState.ep = AddEdgePointState(self, move);
         newState.eo = AddEdgeDirectionState(self, move);
+        newState.centerPoint = AddCenterPointState(self, move);
+        newState.centerRotation = AddCenterRotationState(self, move);
 
         return newState;
+    }
+
+    private int[] AddCenterPointState(State self, State move)
+    {
+        var result = new int[6];
+
+        for (int i = 0; i < result.Length; ++i)
+        {
+            int index = move.centerPoint[i];
+            result[i] = self.centerPoint[index];
+        }
+
+        return result;
+    }
+
+    private int[] AddCenterRotationState(State self, State move)
+    {
+        var result = new int[6];
+
+        for (int i = 0; i < result.Length; ++i)
+        {
+            int moveIndex = move.centerPoint[i];
+            result[i] = (self.centerRotation[moveIndex] + move.centerRotation[i]) % 2;
+        }
+
+        return result;
     }
 
     private int[] AddCornerPointState(State self, State move)
@@ -307,7 +407,22 @@ public class Auto_RubikCube : MonoBehaviour
 
         SettingGroup(data.axisType, data.selectType);
         mRotationParent.StartRotation(GetAxis(data.axisType), data.direction);
-        mState = AddState(mState, mStateSummary[(int)eOperationType.R]);
+        mState = AddState(mState, mStateSummary[MatchIndexSummary(data)]);
+    }
+
+    private int MatchIndexSummary(OperationData currentData)
+    {
+        int index = 0;
+        foreach(var data in mOperationDataSummary)
+        {
+            if (data.IsEqual(currentData)) {
+                break;
+            }
+
+            index++;
+        }
+
+        return index;
     }
 
     private void SettingGroup(AxisType axisType, int selectIndex)
@@ -423,7 +538,16 @@ public class Auto_RubikCube : MonoBehaviour
     {
         if(Input.GetKeyDown(KeyCode.F))
         {
-            StartRotation();
+            //StartRotation();
+            var data = new OperationData(mSelectIndex, mAxisType, +1);
+            StartRotation(data);
+        }
+
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            //StartRotation();
+            var data = new OperationData(mSelectIndex, mAxisType, -1);
+            StartRotation(data);
         }
 
         if (Input.GetKeyDown(KeyCode.L))
